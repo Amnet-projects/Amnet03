@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Amnet Hotspot Management System</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            width: 90%;
+            max-width: 900px;
+        }
+        h1, h2 {
+            text-align: center;
+        }
+        input, button, select {
+            margin: 0.5rem 0;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .packages {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+        }
+        .package {
+            border: 1px solid #4CAF50;
+            padding: 0.5rem;
+            text-align: center;
+        }
+        .package:hover {
+            background-color: #4CAF50;
+            color: white;
+        }
+        table {
+            width: 100%;
+            margin: 1rem 0;
+            border-collapse: collapse;
+        }
+        table, th, td {
+            border: 1px solid black;
+        }
+        th, td {
+            padding: 0.5rem;
+            text-align: center;
+        }
+        .admin-form {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- User Side -->
+    <div id="userView">
+        <h1>Amnet Hotspot</h1>
+
+        <!-- Internet Packages -->
+        <h2>Select an Internet Package</h2>
+        <div class="packages">
+            <div class="package" data-price="1 Ksh" data-duration="5 Min">
+                <h3>1 Ksh</h3><p>5 Min</p>
+            </div>
+            <div class="package" data-price="10 Ksh" data-duration="2 Hrs">
+                <h3>10 Ksh</h3><p>2 Hrs</p>
+            </div>
+            <div class="package" data-price="50 Ksh" data-duration="12 Hrs">
+                <h3>50 Ksh</h3><p>12 Hrs</p>
+            </div>
+            <div class="package" data-price="100 Ksh" data-duration="24 Hrs">
+                <h3>100 Ksh</h3><p>24 Hrs</p>
+            </div>
+            <div class="package" data-price="300 Ksh" data-duration="7 Days">
+                <h3>300 Ksh</h3><p>7 Days</p>
+            </div>
+            <div class="package" data-price="1000 Ksh" data-duration="30 Days">
+                <h3>1000 Ksh</h3><p>30 Days</p>
+            </div>
+        </div>
+
+        <!-- User Login Form -->
+        <h2>Login to Hotspot</h2>
+        <form id="loginForm">
+            <input type="password" id="hotspotPassword" placeholder="Enter password sent by admin" required>
+            <button type="submit">Connect</button>
+        </form>
+        <p id="loginMessage" style="color:red;"></p>
+    </div>
+
+    <!-- Admin Side -->
+    <div id="adminView" style="display:none;">
+        <h1>Admin Panel</h1>
+        <label for="adminName">Admin/Operator Name:</label>
+        <input type="text" id="adminName" placeholder="Enter your name">
+
+        <!-- Real-time number of connected devices -->
+        <h2>Connected Devices: <span id="connectedDevices">0</span></h2>
+
+        <!-- Device Controls -->
+        <table>
+            <thead>
+            <tr>
+                <th>Device</th>
+                <th>Data Used (MB)</th>
+                <th>Connection Time (min)</th>
+                <th>Speed (Mbps)</th>
+                <th>Action</th>
+            </tr>
+            </thead>
+            <tbody id="deviceTable">
+            <!-- This will be filled dynamically -->
+            </tbody>
+        </table>
+
+        <!-- Password Generation -->
+        <h2>Package Password: <span id="currentPassword">N/A</span></h2>
+
+        <!-- Device Histogram -->
+        <h3>Devices Connected Histogram</h3>
+        <canvas id="deviceHistogram"></canvas>
+
+        <!-- Data Usage Graph -->
+        <h3>Total Data Usage Graph</h3>
+        <canvas id="dataUsageGraph"></canvas>
+
+        <!-- Logs -->
+        <h3>Operations Log</h3>
+        <div id="operationsLog" style="max-height: 200px; overflow-y: auto;"></div>
+
+        <!-- Admin Logout -->
+        <button id="logoutAdmin">Logout</button>
+    </div>
+
+    <!-- Admin Login Form -->
+    <button id="adminLoginButton" style="display:block;">Admin Login</button>
+    <form id="adminLoginForm" style="display:none;">
+        <input type="text" id="adminUsername" placeholder="Admin username" required>
+        <input type="password" id="adminPassword" placeholder="Admin password" required>
+        <button type="submit">Login</button>
+    </form>
+    <p id="adminLoginMessage" style="color:red;"></p>
+</div>
+
+<script>
+    // Variables for storing current package password and connected devices
+    let currentPassword = '';
+    let connectedDevices = 0;
+    const devices = [
+        { id: 1, dataUsed: 100, time: 30, speed: 5 },
+        { id: 2, dataUsed: 250, time: 45, speed: 10 },
+        { id: 3, dataUsed: 80, time: 15, speed: 2 }
+    ];
+
+    // Function to generate a random password
+    function generatePassword() {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+        const digits = '0123456789';
+        let password = '';
+        password += chars.charAt(Math.floor(Math.random() * chars.length));
+        password += chars.charAt(Math.floor(Math.random() * chars.length));
+        password += digits.charAt(Math.floor(Math.random() * digits.length));
+        password += digits.charAt(Math.floor(Math.random() * digits.length));
+        return password;
+    }
+
+    // Package selection and password generation
+    document.querySelectorAll('.package').forEach(packageDiv => {
+        packageDiv.addEventListener('click', function() {
+            const price = this.getAttribute('data-price');
+            const duration = this.getAttribute('data-duration');
+
+            // Generate a new password for the selected package
+            currentPassword = generatePassword();
+
+            // Simulate sending the password via SMS
+            alert(`You selected the ${price} package for ${duration}. The password is ${currentPassword} (SMS Sent).`);
+
+            // Display password in admin panel
+            document.getElementById('currentPassword').textContent = currentPassword;
+        });
+    });
+
+    // Handle user login attempt
+    document.getElementById('loginForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const enteredPassword = document.getElementById('hotspotPassword').value;
+        const message = document.getElementById('loginMessage');
+
+        if (enteredPassword === currentPassword) {
+            message.style.color = 'green';
+            message.textContent = 'Successfully connected to the hotspot!';
+        } else {
+            message.style.color = 'red';
+            message.textContent = 'Incorrect password. Please check the password sent via SMS.';
+        }
+    });
+
+    // Admin login handling
+    document.getElementById('adminLoginButton').addEventListener('click', function() {
+        document.getElementById('adminLoginForm').style.display = 'block';
+    });
+
+    document.getElementById('adminLoginForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const username = document.getElementById('adminUsername').value;
+        const password = document.getElementById('adminPassword').value;
+
+        if (username === 'hotspot' && password === '0021') {
+            document.getElementById('userView').style.display = 'none';
+           
